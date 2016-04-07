@@ -1,6 +1,7 @@
 ---
 title: "01-exercises"
 author: "Christopher Brown"
+editor: "Jarus Singh"
 date: "April 6, 2016"
 output: html_document
 ---
@@ -22,10 +23,62 @@ Write a function (f) that takes a vector of numbers, **x**, and returns a vector
 ### Solution 
 
 ```{r}
-f <- function(x) {
+# Elegant solution
+f <- function(x) { prod(x) / ifelse(x==0,1,x) }
+```
+
+```{r}
+# Inelegant solution that I wrote during class
+f_inelegant <- function(x) {
+  # Output will be stored in y, initialize as empty vector
+  y <- c()
   
-  # ...
+  # Computes product of all numbers and store in product_all
+  # Start loop
+  for (i in 1:length(x)) {
+    # If product_all doesn't exist, make it x[1]
+    if (!exists("product_all")) {
+      product_all <- x[1]
+      # Otherwise take product_all times x[i] and store it in product_all
+    } else {
+      product_all <- product_all * x[i]
+    }
+  }
   
+  # Second loop to populate y
+  for (i in 1:length(x)) {
+    # Each value of y is just product_all divided by the
+    # ith value of x
+    y[i] <- product_all / x[i]
+  }
+  
+  # NOTE: Does not work if there are 0s in x
+  # If there is one 0, we just need to replace one value
+  if (!is.na(match(0, x)) & length(match(0, x) == 1)) {
+    zero_pos <- match(0, x)
+    
+    x_aug <- x[-zero_pos]
+    
+    # Sets product_zero using loop
+    for (j in 1:length(x_aug)) {
+      if (!exists("product_x_aug")) {
+        product_x_aug <- x_aug[1]
+      } else {
+        product_x_aug <- product_x_aug * x_aug[j]
+      }
+    }
+    
+    y[zero_pos] <- product_x_aug
+  }
+  
+  # If there is more than one 0
+  if (!is.na(match(0, x)) & length(match(0, x) > 1)) {
+    # Create a vector y, the same length of x, filled with 0s
+    y <- rep(0, length(x))
+  }
+  
+  # Returns y
+  y
 }
 
 ```
@@ -50,7 +103,14 @@ Write a function f(x) to accept an integer vector, and returns a vector with tho
 
 ```{r}
 f <- function(x) {
-  # ...
+  ifelse(x%%3 == 0
+         & x%%5 == 0,
+         "FizzBuzz",
+  ifelse(x%%3 == 0,
+         "Fizz",
+  ifelse(x%%5 == 0,
+         "Buzz",
+         x)))
   
 }
 ```
