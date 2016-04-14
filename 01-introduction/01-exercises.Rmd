@@ -23,8 +23,10 @@ Write a function (f) that takes a vector of numbers, **x**, and returns a vector
 ### Solution 
 
 ```{r}
-# Elegant solution
+# Elegant solution (doesn't work for 0)
 f <- function(x) { prod(x) / ifelse(x==0,1,x) }
+
+# Solution below works for 0 but is inelegant
 ```
 
 ```{r}
