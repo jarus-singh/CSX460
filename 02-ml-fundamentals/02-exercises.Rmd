@@ -1,6 +1,7 @@
 ---
 title: "02-exercises"
 author: "Christopher Brown"
+editor: "Jarus Singh"
 date: "April 13, 2016"
 output: html_document
 ---
@@ -36,21 +37,33 @@ Hint: See `?cars2010`
 - After the **Fuel Economy** data is loaded, combine three data sets into one data set. (Note: The name `dat` is very often used in these situations, `data` is a reserved R word.)  
 
 ```{r}
-dat <- ... # cars2010, cars2011, cars2012)    # Define 
+dat <- bind_rows(cars2010, cars2011, cars2012) # cars2010, cars2011, cars2012)    # Define 
 ```
 
 
 - What is a good "naive guess" of FE? Show your work
 
 ```{r}
-naive_guess <- ...
+# Take the mean!
+naive_guess <- mean(dat$FE)
+
+# Or take the median!
+naive_guess2 <- median(dat$FE)
+
+# Perhaps the mean fuel economy from the last year?
+naive_guess3 <- mean(cars2012$FE)
+
+# Or even the median fuel economy from the last year
+naive_guess4 <- median(cars2012$FE)
 ```
 
 
 - plot FE (Fuel Econonomy) vs. EngDisp. Plot the naive guess.
 
 ```{r}
-# ... ggplot2  
+dat %>%
+  ggplot(aes(x=EngDispl, y = FE)) +
+  geom_point()
 ```
 
 - Sample 10 observations from `dat`
@@ -62,10 +75,15 @@ naive_guess <- ...
 set.seed(314) 
 
 # Sample 
-samp <- .... 
+samp <- dat %>%
+  sample_n(10)
 
 # Plots 
-...
+samp %>%
+  ggplot(aes(x=EngDispl, y = FE))  +
+  geom_point() +
+  geom_hline(yintercept = naive_guess, color = "red") +
+  stat_smooth(method = "lm", se = FALSE)
 
 
 ```
@@ -85,22 +103,26 @@ All functions should accept two arguments:
 ```{r}
 
 rmse <- function(y,yhat) {
-  # ...
+  (y - yhat) ^ 2 %>% mean %>% sqrt
 }
 
 mae <- function(y, yhat) {
-  # ...
+  (y - yhat) %>% abs %>% mean
 }
 
 medae <- function(y, yhat) { 
-  # ...
+  (y - yhat) %>% abs %>% median
 }
 
 ```
 
 Use these functions to evaluate the loss/performance of:
 - the naive guess
-
+```{r, naive_guess_evaluation}
+rmse(dat$FE, naive_guess)
+mae(dat$FE, naive_guess)
+medae(dat$FE, naive_guess)
+```
 
 
 ## Exercise 3: Linear Model and Model Performance 
@@ -109,7 +131,8 @@ Use these functions to evaluate the loss/performance of:
 
 
 ```{r}
-fit.2010 <- ... 
+fit.2010 <- lm(formula = FE ~ EngDispl,
+               data = cars2010)
 ```
 
 - Use your functions to evaluate the training error
@@ -119,13 +142,16 @@ fit.2010 <- ...
 
 ```{r}
 
-y.2010 <- ... 
-y.2011 <- ... 
-y.2012 <- ...
+y.2010 <- predict.lm(fit.2010, newdata=cars2010)
+y.2011 <- predict.lm(fit.2010, newdata=cars2011)
+y.2012 <- predict.lm(fit.2010, newdata=cars2012)
 
-rmse.2010 <- ...
-rmse.2011 <- ...
-rmse.2012 <- ... 
+rmse.2010 <- rmse(cars2010$FE,
+                  y.2010)
+rmse.2011 <- rmse(cars2011$FE,
+                  y.2011)
+rmse.2012 <- rmse(cars2012$FE,
+                  y.2012)
 
 ```
 
@@ -145,6 +171,11 @@ rmse.2012
 
 
 ```{r}
-fit.2010 <- ...
-betas <- ...
+# Note 1: Corrected object that was fit.2010 to be fit.2011 so as not
+# to overwrite fit.2010 object above
+# Note 2: No variable named "VarValve" in cars2011, used both variables
+# that have VarValve* in them
+fit.2011 <- lm(formula = FE ~ EngDispl + NumCyl + VarValveTiming + VarValveLift,
+               data = cars2011)
+betas <- fit.2011$coefficients
 ```
