@@ -170,9 +170,11 @@ fit.min.forward
 
 - Implement Kuhn's iterative feature removal function described in **APM** Section 3.5, page 47
 
+Jarus Note: This is incomplete. I haven't created a loop that actually removes the column and goes back through the input until all variables have correlations below the threshold input, but it has the basic logic to flag the first column that should be removed.
+
 ```{r}
+# Brings in tidyr for gather() function
 library(tidyr)
-#INCOMPLETE
 
 kuhn_iterative_feature_removal <- function(data_input,
                                            threshold_input = 0.8) {
@@ -210,11 +212,20 @@ kuhn_iterative_feature_removal <- function(data_input,
   correlation_matrix2 <- cor(data_input[-colloc2]) %>%
     as.data.frame
   
+  correlation_matrix2$x <- rownames(correlation_matrix2)
+  
   correlation_matrix2_avg <- correlation_matrix2 %>%
     gather(y, corr_value, -x) %>%
     subset(x == correlation_matrix_max[[1,2]]
            & corr_value != 1) %>%
     summarise(avg = mean(abs(corr_value)))
+  
+  # If correlation_matrix1 has higher, flag it for removal
+  if (correlation_matrix1_avg > correlation_matrix2_avg) {
+    remove_column <- correlation_matrix_max[[1,1]]
+  } else {
+    remove_column <- correlation_matrix_max[[1,2]]
+  }
 }
 
 # Testing using mtcars dataset
