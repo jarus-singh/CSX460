@@ -1,6 +1,6 @@
 ---
 title: "03-exercises"
-author: "Your Name Here"
+author: "Jarus Singh"
 date: "April 20, 2016"
 output: html_document
 ---
