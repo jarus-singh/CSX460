@@ -57,22 +57,27 @@ Using Fuel Economy data set from the **AppliedPredictiveModeling** Package.
 - USe MASS::StepAIC to improve the model using backward stepwise regression 
 
 ```{r}
-
-form <- ~ EngDispl + NumCyl + Transmission + AirAspirationMethod + NumGears + TransLockup + TransCreeperGear + DriveDesc + IntakeValvePerCyl + ExhaustValvesPerCyl + CarlineClassDesc + VarValveTiming + VarValveLift
-
  # Your work here
- fit.min <- lm( FE ~ 1, fe )
+fit.min <- lm(FE ~ 1, fe)
+fit.full <- lm(FE ~ ., fe)
 
- 
- stepAIC( fit.min.forward, scope = ~ 1, direction = "backward")
- 
- 
- fit.full <- lm( FE ~ ., fe )
- stepAIC( fit.full, score = ~ 1, direction = "backward")
+# Example
+# stepAIC(fit.min, scope = ~ 1 + EngDispl + NumCyl + Transmission, direction = "forward")
+
+# Generate entire list of names and paste into scope
+# fe %>% names %>% cat(sep = " + ")
+
+formula_input <- ~ EngDispl + NumCyl + Transmission + FE + AirAspirationMethod + NumGears + TransLockup + TransCreeperGear + DriveDesc + IntakeValvePerCyl + ExhaustValvesPerCyl + CarlineClassDesc + VarValveTiming + VarValveLift
+
+fit.min.forward <- stepAIC(fit.min, scope = formula_input, direction = "forward")
+fit.full.backward <- stepAIC(fit.full, scope = ~ 1, direction = "backward")
+
+fit.min.forward$call
+fit.full.backward$call
 ```
 
 - Are they the same model? If not why?  Which is better? JUstify your answer.
-
+No, they are not the same model. You can see that the backward call contains AirAspirationMethod however the forward call does not. The forward call has an AIC of 3662.66 whereas the backward call has an AIC of 3663.23, so the fit.min.forward is a slightly better model.
 
 
 ## Logsitic and Inverse Logistic Transformation 
@@ -92,16 +97,36 @@ form <- ~ EngDispl + NumCyl + Transmission + AirAspirationMethod + NumGears + Tr
 ```{r}
 
 logistic <- function(x) { 
-  ... # Your work here  
+  1 / (1 + exp(1) ^ (-x))
 }
 
-qplot( ... )
+# Creates data frame for plotting
+sequence <- seq(from = -10, to = 10, by = 0.1) %>%
+  as.data.frame
+
+names(sequence) <- "x"
+
+sequence <- sequence %>%
+  mutate(y = logistic(x))
+
+qplot(x = sequence$x,
+      y = sequence$y)
 
 logistic_inv <- function(y) { 
-  ... # Your work  
+  -log((1/y) - 1)
 }
 
-qplot(...) 
+# Creates data frame for plotting
+sequence_inv <- seq(from = 0, to = 1, by = 0.01) %>%
+  as.data.frame
+
+names(sequence_inv) <- "x"
+
+sequence_inv <- sequence_inv %>%
+  mutate(y = logistic_inv(x))
+
+qplot(x = sequence_inv$x,
+      y = sequence_inv$y)
 
 ```
 
@@ -121,6 +146,20 @@ c(0,0.5,1) %>% logistic_inv
 Using the GermanCredit data from the **Caret** package/ UCI Machine Learning Library, create a model for `Class` ("Good" vs. "Bad" ). Show your model performance.  
 
 ```{r}
+# Model to start with
+fit.min.gc <- glm(Class ~ 1,
+                  data = GermanCredit,
+                  family = "binomial")
+
+# Generate entire list of names and paste into scope
+# GermanCredit %>% names %>% cat(sep = " + ")
+
+gc_formula_input <- ~ Duration + Amount + InstallmentRatePercentage + ResidenceDuration + Age + NumberExistingCredits + NumberPeopleMaintenance + Telephone + ForeignWorker + Class + CheckingAccountStatus.lt.0 + CheckingAccountStatus.0.to.200 + CheckingAccountStatus.gt.200 + CheckingAccountStatus.none + CreditHistory.NoCredit.AllPaid + CreditHistory.ThisBank.AllPaid + CreditHistory.PaidDuly + CreditHistory.Delay + CreditHistory.Critical + Purpose.NewCar + Purpose.UsedCar + Purpose.Furniture.Equipment + Purpose.Radio.Television + Purpose.DomesticAppliance + Purpose.Repairs + Purpose.Education + Purpose.Vacation + Purpose.Retraining + Purpose.Business + Purpose.Other + SavingsAccountBonds.lt.100 + SavingsAccountBonds.100.to.500 + SavingsAccountBonds.500.to.1000 + SavingsAccountBonds.gt.1000 + SavingsAccountBonds.Unknown + EmploymentDuration.lt.1 + EmploymentDuration.1.to.4 + EmploymentDuration.4.to.7 + EmploymentDuration.gt.7 + EmploymentDuration.Unemployed + Personal.Male.Divorced.Seperated + Personal.Female.NotSingle + Personal.Male.Single + Personal.Male.Married.Widowed + Personal.Female.Single + OtherDebtorsGuarantors.None + OtherDebtorsGuarantors.CoApplicant + OtherDebtorsGuarantors.Guarantor + Property.RealEstate + Property.Insurance + Property.CarOther + Property.Unknown + OtherInstallmentPlans.Bank + OtherInstallmentPlans.Stores + OtherInstallmentPlans.None + Housing.Rent + Housing.Own + Housing.ForFree + Job.UnemployedUnskilled + Job.UnskilledResident + Job.SkilledEmployee + Job.Management.SelfEmp.HighlyQualified
+
+# Step along now!
+fit.min.forward <- stepAIC(fit.min.gc,
+                           scope = gc_formula_input,
+                           direction = "forward")
 
 fit.min.forward
 ```
@@ -130,6 +169,56 @@ fit.min.forward
 ## Iterative Correlated Feature Removal 
 
 - Implement Kuhn's iterative feature removal function described in **APM** Section 3.5, page 47
+
+```{r}
+library(tidyr)
+#INCOMPLETE
+
+kuhn_iterative_feature_removal <- function(data_input,
+                                           threshold_input = 0.8) {
+  correlation_matrix <- cor(data_input) %>%
+    as.data.frame
+  
+  correlation_matrix$x <- rownames(correlation_matrix)
+  
+  correlation_matrix_max <- correlation_matrix %>%
+    gather(y, corr_value, -x) %>%
+    subset(corr_value != 1) %>%
+    mutate(corr_value = abs(corr_value)) %>%
+    subset(corr_value == max(corr_value))
+  
+  # First row of correlation_matrix_max has the two variables we want to
+  # create correlation matrices against all other variables
+  
+  # Finds where second variable is in data_input
+  colloc1 <- match(correlation_matrix_max[[1,2]], names(data_input))
+  
+  correlation_matrix1 <- cor(data_input[-colloc1]) %>%
+    as.data.frame
+  
+  correlation_matrix1$x <- rownames(correlation_matrix1)
+  
+  correlation_matrix1_avg <- correlation_matrix1 %>%
+    gather(y, corr_value, -x) %>%
+    subset(x == correlation_matrix_max[[1,1]]
+           & corr_value != 1) %>%
+    summarise(avg = mean(abs(corr_value)))
+  
+  # Creates second correlation matrix
+  colloc2 <- match(correlation_matrix_max[[1,1]], names(data_input))
+  
+  correlation_matrix2 <- cor(data_input[-colloc2]) %>%
+    as.data.frame
+  
+  correlation_matrix2_avg <- correlation_matrix2 %>%
+    gather(y, corr_value, -x) %>%
+    subset(x == correlation_matrix_max[[1,2]]
+           & corr_value != 1) %>%
+    summarise(avg = mean(abs(corr_value)))
+}
+
+# Testing using mtcars dataset
+```
 
 
 
