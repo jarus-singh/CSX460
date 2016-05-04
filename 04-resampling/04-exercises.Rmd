@@ -1,6 +1,6 @@
 ---
 title: "Sensitivity and Specificity"
-author: "Your Name Here"
+author: "Jarus Singh"
 date: "October 5, 2015"
 output: html_document
 ---
@@ -47,10 +47,11 @@ x_mean = mean(x)
 k=10
 
 # CROSS-VALIDATION
-# ... YOUR WORK HWEW
+# Randomizes the order of x
+x <- x[order(rnorm(20))]
 
-sd_cv <- .. # YOUR ANSWER HERE
-
+# Finds sd_cv of randomly ordered x
+sd_cv <- sapply(1:k, function(i) x[-c(2*i-1,2*i)] %>% mean) %>% sd
 
 # BOOTSTRAP (EXAMPLE)
 sd_boot <- sapply(1:k, function(i) sample(x,replace=TRUE) %>% mean ) %>% sd
@@ -105,16 +106,59 @@ The functions should take two logical vectors of the same length, `y` and `yhat`
 
 ```{r}
 
-prevalence = function(y,yhat) {}
-accuracy   =  .. 
-error_rate = ..
-tpr = ..
-fpr = ..      # See Example
-tnr = ..
-sensitivity = ..
-specificity = ..
-recall = .. 
-precision = ..
+prevalence = function(y,yhat) {
+  # Takes all positives [sum(y)] over total samples [length(y)]
+  sum(y) / length(y)
+}
+accuracy   =  function(y, yhat) {
+  # sum(y == yhat) is TRUE if values match, sum is the total
+  # number of classifications that match over the total samples [length(y)]
+  sum(y == yhat) / length(y)
+}
+error_rate = function(y, yhat) {
+  # Could also have used 1 - accuracy(y,yhat) but
+  # that may have been against the spirit of the assignment
+  sum(y != yhat) / length(y)
+}
+tpr = function(y, yhat) {
+  # Numerator: y has to be true, and yhat has to be true
+  # to have correctly identified y
+  sum(y * yhat) /
+  # Denominator: total number of true positive
+  sum(y)
+}
+fpr = function(y,yhat) {
+  sum(y & (y != yhat)) /
+    sum(!y)
+}      # See Example
+tnr = function(y, yhat) {
+  # y == yhat finds all correct specifications, !y matches them on
+  # only true negatives, then divide by all true negatives
+  sum(!y & (y == yhat)) /
+    sum(!y)
+}
+# Note: Same as true positive rate
+sensitivity = function(y, yhat) {
+  # Numerator: y has to be true, and yhat has to be true
+  # to have correctly identified y
+  sum(y * yhat) /
+  # Denominator: total number of true positive
+  sum(y)
+}
+# Note: same as tnr
+specificity = function(y, yhat) {
+  sum(!y & (y == yhat)) /
+    sum(!y)
+}
+# Note: same as TPR, sensitivity
+recall = function(y, yhat) {
+  sum(y * yhat) /
+    sum(y)
+}
+precision = function(y, yhat) {
+  sum(y * yhat) /
+    sum(yhat)
+}
 
 # EXAMPLE: fpr
 # The FPR is THE NUMBER OF FALSE POSITIVES / NEGATIVES (TN+FP)
@@ -133,8 +177,10 @@ fpr(y,yhat)
 ```
 
 - What is wrong with the modeling approach used?
+That's a very good question, I had to think about this for a while and don't have a definitive answer. Here are some criticisms though.
 
-
-
+1. The plot above shows that versicolor species show up in an obvious area when charting Sepal.Length vs. Petal.Length. However, when you look at the model specification, Sepal.Length is excluded, but Petal.Width and Petal.Length (which are highly correlated) are both included. This could have resulted in overfitting.
+2. The data was split into equal sized training and test sets. Given only 150 total data points, it's possible that one could have constructed a much better model using more data in the training set.
+3. Related to 1, given the plot of the data, it looks like a k-nearest neighbors model could perform quite well instead of the logistic regression we do instead.
 
 
