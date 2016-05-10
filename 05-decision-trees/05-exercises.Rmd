@@ -1,7 +1,7 @@
 ---
 title: "05-exercises"
-author: "Your Name Here"
-date: "2016-05-xx"
+author: "Jarus Singh"
+date: "2016-05-10"
 output: html_document
 ---
 
@@ -10,7 +10,7 @@ output: html_document
 - **APM** Chapter 14.1-14.5 "Classification Trees and Rule-Based"  
 
 ```{r, echo=FALSE, results='hide', warning=FALSE }
-packs <-  c('ggplot2', 'magrittr', 'dplyr', 'caret', 'AppliedPredictiveModeling')
+packs <-  c('ggplot2', 'magrittr', 'dplyr', 'caret', 'AppliedPredictiveModeling', "e1071")
 
 for( nm in packs ) { 
   # message(nm)
@@ -38,16 +38,54 @@ Save the caret objects with the names provided.
 
 ```{r}
 
-# Your work here. 
+# Your work here.
+# Calls GermanCredit gc for short
+data(GermanCredit)
+gc <- GermanCredit
 
-fit.glm <- ..
-fit.knn <- ..
-fit.rpart <- ..
-fit.rf <- ..
-fit.myown <- ..
+# Creates ctrl file
+ctrl <- trainControl(method="boot",
+                     number=5,
+                     classProb=TRUE,
+                     savePrediction=TRUE)
+
+# Does logistic regression classification
+fit.glm <- train(Class ~ .,
+                 data=gc,
+                 method="glm",
+                 family="binomial",
+                 trControl=ctrl)
+
+# Does k-nearest neighbors classification
+fit.knn <- train(Class ~ .,
+                 data = gc,
+                 method = "knn",
+                 trControl=ctrl,
+                 # Preprocessing useful for knn
+                 preProcess = c("center", "scale"),
+                 # Starts with a small, reasonable tuneLength
+                 tuneLength = 3)
+
+# Does CART on gc
+fit.rpart <- train(Class ~ .,
+                   data=gc,
+                   method="rpart",
+                   trControl=ctrl)
+
+# Does Random Forest on gc
+fit.rf <- train(Class ~ .,
+                data = gc,
+                method = "rf",
+                trControl = ctrl)
+
+# Let's try...Bagged MARS on a few variables (using . takes too long)
+fit.myown <- train(Class ~ Amount + Duration + Age,
+                   data = gc,
+                   method = "bagEarth",
+                   trControl = ctrl)
 
 
-````
+```
 
 
 - Compare the models using `caret::confusionMatrix`
@@ -59,12 +97,81 @@ Show your work!
 ```{r}
 
 .. # YOUR WORK HERE
+# Creates confusion matrix objects using caret package
+glm_cm <- fit.glm %>%
+  confusionMatrix( positive="Bad")
+
+glm_cm
+
+knn_cm <- fit.knn %>%
+  confusionMatrix( positive="Bad")
+
+knn_cm
+
+rpart_cm <- fit.rpart %>%
+  confusionMatrix( positive="Bad")
+
+rpart_cm
+
+rf_cm <- fit.rf %>%
+  confusionMatrix( positive="Bad")
+
+rf_cm
+
+myown_cm <- fit.myown %>%
+  confusionMatrix( positive="Bad")
+
+myown_cm
 
 ```
 
 
 Q: Which models would you select based on these tools?
+Unfortunately I didn't set a seed above so my results will not be replicable. I have pasted in the relevant confusion matrices however so you can see my decision making process:
 
+1. Logistic Regression (glm):
+          Reference
+Prediction  Bad Good
+      Bad  14.8  9.9
+      Good 16.3 59.0
+                            
+ Accuracy (average) : 0.7381
+ 
+2. K-Nearest Neighbors (knn):
+          Reference
+Prediction  Bad Good
+      Bad  10.3  9.7
+      Good 18.7 61.3
+                            
+ Accuracy (average) : 0.7161
+ 
+3. CART (rpart):
+          Reference
+Prediction  Bad Good
+      Bad  11.4 11.3
+      Good 18.7 58.6
+                            
+ Accuracy (average) : 0.7007
+ 
+4. Random Forest (rf):
+          Reference
+Prediction  Bad Good
+      Bad  12.6  8.1
+      Good 17.1 62.2
+                            
+ Accuracy (average) : 0.7477
+ 
+5. Bagged MARS (on a subset of vars, myown)
+           Reference
+Prediction  Bad Good
+      Bad   2.9  2.7
+      Good 26.3 68.1
+                            
+ Accuracy (average) : 0.7098
+ 
+If we look at accuracy, the random forest model does the best job. However, the logistic regression model has the highest TPR (assuming positive="Bad"). If bad borrowers are particularly costly, then it's possible we would prefer to use that method. The question below concerns this.
+
+ 
 Q: If you assume that a `Class=="bad""` is 10 more costly than `Class=="good"`, determine your threshold for the model of your choice.  Show your work.
 
 
@@ -72,5 +179,47 @@ Q: If you assume that a `Class=="bad""` is 10 more costly than `Class=="good"`, 
 
 .. # YOUR WORK HERE
 
+# Let's create a function that scores all our models, call it on each model and then
+# report out the model that scores best.
+
+# Start with the following assumptions:
+# We get 1 point for each true negative (good borrower that we predict to be good)
+# Context: This is somebody that would be good to extend a loan to, and we do just that
+
+# We lose 10 points for each false positive
+# Context: This is somebody who we should not loan to, but do so anyways. We lose "10 points" (10 times worse than extending a loan to somebody we should have extended a loan to)
+
+# We gain 0 points for each true positive, these are bad borrowers we don't lend to
+
+# We gain 0 points for each false negative, these are good borrowers we don't lend to
+
+model_score <- function(cm_input) {
+  score_output <- -10 * (cm_input$table %>% extract2(2,1)) +
+    (cm_input$table %>% extract2(2,2))
+  
+  score_output
+}
+
+glm_score <- model_score(glm_cm)
+knn_score <- model_score(knn_cm)
+rpart_score <- model_score(rpart_cm)
+rf_score <- model_score(rf_cm)
+myown_score <- model_score(myown_cm)
+
+# Creates data frames with scores
+score_df <- data.frame(model = c("glm", "knn", "rpart", "rf", "myown (Bagged MARS)"),
+                       score = c(glm_score, knn_score, rpart_score, rf_score, myown_score))
+
+# Finds maximum
+max_score_model <- score_df %>%
+  subset(score == max(score_df$score))
+
+# Which model is it?
+max_score_model$model
+# Answer: glm performs best when incorrectly identifying bad borrowers as
+# good ones is 10 times worse than correctly identifying good ones
+
+max_score_model$score
+# Output -103.5516 when I ran this, remember I didn't set a seed :(
 
 ```
