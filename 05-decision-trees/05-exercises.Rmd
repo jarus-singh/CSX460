@@ -123,6 +123,23 @@ myown_cm <- fit.myown %>%
 
 myown_cm
 
+# Now let's create ROC curves using pROC
+library(pROC)
+roc.glm <- roc(fit.glm$pred$obs, fit.glm$pred$Bad, auc = TRUE)
+roc.glm %>% plot(print.auc=TRUE, grid = TRUE)
+
+roc.knn <- roc(fit.knn$pred$obs, fit.knn$pred$Bad, auc = TRUE)
+roc.knn %>% plot(print.auc=TRUE, grid = TRUE)
+
+roc.rpart <- roc(fit.rpart$pred$obs, fit.rpart$pred$Bad, auc = TRUE)
+roc.rpart %>% plot(print.auc=TRUE, grid = TRUE)
+
+roc.rf <- roc(fit.rf$pred$obs, fit.rf$pred$Bad, auc = TRUE)
+roc.rf %>% plot(print.auc=TRUE, grid = TRUE)
+
+roc.myown <- roc(fit.myown$pred$obs, fit.myown$pred$Bad, auc = TRUE)
+roc.myown %>% plot(print.auc=TRUE, grid = TRUE)
+
 ```
 
 
