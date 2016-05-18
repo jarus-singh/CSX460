@@ -1,7 +1,7 @@
 ---
 title: "05-exercises"
-author: "Your Name Here"
-date: "2016-05-xx"
+author: "Jarus Singh"
+date: "2016-05-17"
 output: html_document
 ---
 
@@ -38,36 +38,48 @@ This week we return to the Fuel Economy Data having learned much about model bui
 
 Start by making choosing a metric and making a naive guess of model performance: 
 
-Metric: _______________
-Naive Guess: _______________
-Expected Model Performance (based on Naive Guess): _______________
+Metric: RMSE
+Naive Guess: 35.04 (mean of FE within dataset for all years)
+Expected Model Performance (based on Naive Guess): 8.09 (RMSE for Naive Guess)
 
 Show your work below for the calculations
 
 ```{r} 
 
   
-naive_guess = ..
+naive_guess = mean(FE$FE)
 
-err_naive_guess = ..
+err_naive_guess = sqrt(mean((FE$FE - naive_guess) ^ 2))
 
 ```
 
 
-Based only your intuition, how low do your think you can get your metric: ___________
+Based only your intuition, how low do your think you can get your metric: I think I can decrease it by at least a quarter to around 6.
 
 
 ## Examine your data
 
  * Plot your response/outcome 
 
- * Make a guess of a strong predictor: _________________  
+ * Make a guess of a strong predictor: EngDispl
+ My intuition is that a higher displacement is a more powerful car with a lower fuel economy
+ 
  * Plot your response vs your predictor. 
 
 ```{r}
 
 .. # Your work here
+# Plot your response/outcome
+# Creates a histogram for Fuel Economy, it seems to have a peak around 35
+# with a right skew (long right tail)
+qplot(FE$FE)
 
+# Plot your response vs your predictor
+qplot(FE$FE, FE$EngDispl)
+
+# Check it out! There's definitely a negative correlation that I expected.
+# However, the relationship is clearly non-linear so a linear model
+# will not be the best possible model.
 ```
 
 
@@ -77,15 +89,33 @@ Based only your intuition, how low do your think you can get your metric: ______
 Using **caret**, build a simple linear model and a simple tree model. 
 
 ```{r}
+library(caret)
 
-fit.lm <- .. # Your model here
-fit.rp <- .. # Your model here
+# Creates control file
+ctrl <- trainControl(method="boot",
+                     number=5,
+                     savePrediction=TRUE)
+
+# Sets seed for replication purposes
+set.seed(27)
+fit.lm <- train(FE ~ .,
+                data = FE,
+                method = "lm",
+                trControl = ctrl)
+
+# Sets seed for replication purposes
+set.seed(27)
+fit.rp <- train(FE ~ .,
+                data = FE,
+                method = "rpart",
+                trControl = ctrl)
 
 ```
 
 
 What did you learn about the data from these models.
 
+What I found particularly interesting was the fit.rp$finalModel. It looks like EngDispl is very important for creating the prediction for fuel efficiency. Every split in the tree used engine displacement. The model attempts to group different regions of the curve displayed in qplot(FE$FE, FE$EngDispl). I'm not entirely sure how to see significance in the final lm model, but I would imagine the effect of EngDispl on FE is statistically significant.
 
 
 ## Build More Advanced Models
@@ -97,9 +127,19 @@ Now refine your models. Use **caret** to build advanced models:
 ```{r}
 
 # Your work here.
-fit.bag   <- .. # bagging model 
+# Let's try Bagged CART!
+set.seed(27)
+fit.bag   <- train(FE ~ .,
+                   data = FE,
+                   method = "treebag",
+                   trControl = ctrl)
 
-fit.boost <- .. # boosting model
+# Let's try a Boosted Tree (because trees are the best)
+set.seed(27)
+fit.boost <- train(FE ~ .,
+                   data = FE,
+                   method = "blackboost",
+                   trControl = ctrl)
 
 
 ```
@@ -109,3 +149,10 @@ fit.boost <- .. # boosting model
 
 Which model would you use and why?  Under different circumstances why would you choose one of the other models.
 
+Let's compare the RMSEs!
+fit.lm: 3.593024
+fit.rp: 4.730299
+fit.bag: 3.826303
+fit.boost: 3.405031
+
+The boosted tree model performed the best in terms of minimizing RMSE. However, the computational time necessary to compute the model took much longer than any of the other models. I could imagine a situation where accuracy is important, but having an answer quickly is more important than waiting. In addition, if interpretability is important, the lm model is the easiest to report out on. In a hypothetical situation where we're advising people who are designing a car, we could give them advice on how changing various parts of the car will have various effects on FE (e.g. reducing EngDispl by 1 results in a 2.346 gain in FE).
